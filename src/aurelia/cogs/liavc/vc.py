@@ -3,7 +3,7 @@ import asyncio
 from discord.ext import commands
 from discord import app_commands
 from dotenv import load_dotenv
-import requests
+import aiohttp
 import os
 
 class Vc(commands.Cog):
@@ -44,12 +44,14 @@ class Vc(commands.Cog):
             channel = interaction.user.voice.channel
             vc = await channel.connect()
             
-            response = requests.get(url)
-            if response.status_code == 200:
-                with open("audio.mp3", 'wb') as f:
-                    f.write(response.content)
-            else:
-                print(f"Failed to download, HTTP Status code: {response.status_code}")
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        with open("audio.mp3", 'wb') as f:
+                            f.write(await response.read())
+                    else:
+                        await interaction.followup.send(f"Failed to download, HTTP Status code: {response.status}", ephemeral=True)
+                        return
 
             discord.opus.load_opus("/usr/lib64/libopus.so")
             if not discord.opus.is_loaded():
